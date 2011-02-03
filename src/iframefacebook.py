@@ -36,8 +36,7 @@ def get_redirect_path(path):
 
 def clear_session(session):
 	try:
-		if settings.DEBUG:
-			print "clear session data (fbuid,token,permissons)"
+		# "clear session data (fbuid,token,permissons)"
 		del session['fbuid']
 		del session['access_token']
 		del session['expires']
@@ -75,16 +74,14 @@ def check_permisson(required_permissions, request):
 	
 	#koennen mehrere neue permissions benoetigt werden
 	required_permissions = string.split(required_permissions,",")
-	
 	need_permission = None
-	if settings.DEBUG:
-		print "---------- check permissions ----------"
 	
+	#	print "---------- check permissions ----------"
 	if "permissions" in request.session:
 		
 	
-		if settings.DEBUG:
-			 print "permissions vorhanden  --> vergleichen ob gewuenscht da ist"
+		
+		#	 print "permissions vorhanden  --> vergleichen ob gewuenscht da ist"
 		#mehrere permissions vorhanden
 		per = request.session["permissions"]
 		per = string.split(per,",")
@@ -92,19 +89,13 @@ def check_permisson(required_permissions, request):
 		for p in required_permissions:
 			if p not in per:
 				#es gibt mindestens eine neue permission
-				if settings.DEBUG:
-					print "es gibt mindestens eine neue permission"
+				
+				#	print "es gibt mindestens eine neue permission"
 				need_permission = True
-				return need_permission
-			else:
-				if settings.DEBUG:
-					print p+ " schon vorhanden"
-		
+				return need_permission	
 	else:
-		need_permission = True
-		if settings.DEBUG:
-			print "noch keine permissions vorhanden"
-
+		need_permission = True	
+		#	print "noch keine permissions vorhanden"
 	return need_permission
 
 
@@ -134,8 +125,8 @@ def redirect_auth(next = settings.FACEBOOK_REDIRECT_URI, required_permissions = 
 		query, #?scope=...&redirect_uri=...
 		parts.fragment,
 	))
-	if settings.DEBUG:
-		print "redirect_auth url: " + url
+	
+	#	print "redirect_auth url: " + url
 	#logo wird nicht gezeigt redirect erfolgt ueber browser
 	if re.search("^https?:\/\/([^\/]*\.)?facebook\.com(:\d+)?", url.lower()):
 		return HttpResponse('<script type="text/javascript">\ntop.location.href = "%s";\n</script>' % url)
@@ -150,45 +141,20 @@ def check_fb_request(request):
 	if fbuid:
 		if "fbuid" in  request.session:
 			if request.session["fbuid"] != fbuid:
-				if settings.DEBUG:
-					print "fbuid hat sich geaendert"
-					print "jetzt : "+ str(fbuid)
 				clear_session(request.session)
 				request.session["fbuid"] = fbuid
 		else: 
-			if settings.DEBUG:
-				print "fbuid noch nicht in session aber aus get"
-				print "fbuid jetzt: "+str(fbuid)
 			request.session["fbuid"] = fbuid
-	else:
-		if settings.DEBUG:
-			if "fbuid" in  request.session:	 
-				print "fbuid ist in session gespeichert"
-				print "fbuid ist : "+ str(request.session["fbuid"])
-			else:
-				print "gar keine fbuid vorhanden"
+
 		
 	per = request.REQUEST.get("fb_sig_ext_perms",None)
 	if per:
 		if "permissions" in  request.session:
 			if request.session["permissions"] != per:
-				if settings.DEBUG:
-					print "permissions haben sich geaendert"
-					print "jetzt : "+ str(per)
 				request.session["permissions"] = per
 		else: 
-			if settings.DEBUG:
-				print "permissions noch nicht in session aber aus get"
-				print "permissions jetzt: "+str(per)
 			request.session["permissions"] = per
-	else:
-		if settings.DEBUG:
-			if "permissions" in  request.session:	 
-				print "permissions sind in session gespeichert"
-				print "permissions sind : "+ str(request.session["permissions"])
-			else:
-				print "gar keine permissions vorhanden"
-				print "user nicht angemeldet oder auf seite die keine auth erfordert"	
+	
 
 
 ###
@@ -204,30 +170,20 @@ def require_login(permissions=None):
  						
 			
 			if "error_reason" in request.GET:
-				if settings.DEBUG:
-					print "raus weil user kein zugriff auf seine daten erlaubt"
+				# redirect page with no auth required
 				return HttpResponse('<script type="text/javascript">\ntop.location.href = "%s";\n</script>' % settings.FACEBOOK_REDIRECT_URI)
 			
-			if "expires" in request.session:
-				if settings.DEBUG:
-					print "token expires in: "  + str(time.time()-request.session["expires"])
+			if "expires" in request.session:	
 				if request.session["expires"] < time.time():
-					if settings.DEBUG:
-						print "token has expired"
 					try:
 						del request.session['access_token']
 						del request.session['expires']
 					except:
-						if settings.DEBUG:
-							print "token oder expires war nicht in session"
 						pass
 					return redirect_auth(next=get_redirect_path(request.path),required_permissions=permissions)
 		
 			#authcode von einer anwendung
 			if 'code' in request.GET:
-				print request
-				if settings.DEBUG:
-					print "access token aus code"
 				a,e = get_access_token_from_code(request.GET["code"],next=get_redirect_path(request.path))
 				if a:
 					request.session["access_token"] = a
@@ -249,15 +205,10 @@ def require_login(permissions=None):
 			
 				
 			if "access_token" not in request.session:
-				if settings.DEBUG:
-					print "noch kein token in der session --> user hat seite direkt aufgerufen"
 				return redirect_auth(next=get_redirect_path(request.path),required_permissions=permissions)
 				 
 			#man braucht neue permissions
 			if permissions:
-
-				if settings.DEBUG:
-					print "neue permissions notwendig: "+permissions
 				per = request.session.get("permissions",None)
 				if per:
 					print per
@@ -268,19 +219,12 @@ def require_login(permissions=None):
 					return redirect_auth(next=get_redirect_path(request.path),required_permissions=permissions)
 			
 			#access token muesst jetzt vorliegen  
-			if settings.DEBUG:
-				print "token in session: "+request.session["access_token"] 
-			try:
-			
-				return view(request, *args, **kwargs)
-				
+			try:			
+				return view(request, *args, **kwargs)				
 			except fb.GraphAPIError as er:
-				 if settings.DEBUG:
-					 print er.args
 				 if str(er)=='Error validating access token.':
 					 clear_session(request.session)
-					 return HttpResponseRedirect(request.path)
-					 
+					 return HttpResponseRedirect(request.path)				 
 				 else:
 					 return HttpResponseRedirect("/") 
 				
@@ -295,25 +239,13 @@ def require_login(permissions=None):
 # + speichert die permissions eines users in einer session
 ###	
 class FacebookMiddleware(object):
-
- 
-	def process_request(self, request):
-			
+	def process_request(self, request):		
 		request.fbuid = request.session.get("fbuid",None)			
 		if 'access_token' in request.session:
 			fb=facebook(request.session["access_token"])
 			request.graph = fb
-			#request.session['graph'] = fb
-			if settings.DEBUG:
-				print "graph erzeugt in request"
-			#return request
-		else:
-			if settings.DEBUG:
-				print "kein token in middleware"
 		
-		
-		
-		
+	
 		
 #http://djangosnippets.org/snippets/1540/	
 # + safari fall back

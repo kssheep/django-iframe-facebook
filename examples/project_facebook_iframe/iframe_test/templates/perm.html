@@ -1,0 +1,7 @@
+{% extends "index.html" %}
+
+{% block content %}
+{% for feed in stream %}
+	<p>{{feed.from.name}}: {{feed.message}}</p>
+{% endfor %}
+{% endblock  %}
